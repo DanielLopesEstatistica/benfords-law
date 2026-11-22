@@ -1,0 +1,24 @@
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# Credenciais (ver secrets/README.md)
+secrets/*
+!secrets/README.md
+!secrets/.gitignore
+!secrets/**/*.example
+.env
+.Renviron
+.secret/
+
+# Votação TSE 2022 (arquivo muito grande para o GitHub)
+# https://dadosabertos.tse.jus.br/dataset/resultados-2022
+*.zip
+votacao_candidato_munzona_2022_BRASIL.csv
+
+rsconnect/
+
+.DS_Store
+Thumbs.db

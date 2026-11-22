@@ -1,0 +1,70 @@
+
+```{r}
+library(tidyverse)
+arq_zip = "votacao_candidato_munzona_2022.zip"
+nome_dados = "votacao_candidato_munzona_2022_BRASIL.csv"
+dados = unzip(arq_zip, nome_dados) 
+dados_totais = read_delim(nome_dados, delim = ";") 
+
+```
+
+```{r}
+primeiros_digitos = function(vetor){
+  vetor = vetor/10^floor(log10(vetor))
+  vetor = floor(vetor)
+  return(vetor)
+}
+
+dados = dados_totais %>% filter(DS_CARGO == "Presidente")
+#dados = dados[floor(nrow(dados)/2):nrow(dados),]
+dados = dados %>% mutate(primeiro_digito = primeiros_digitos(QT_VOTOS_NOMINAIS_VALIDOS))
+dados = dados %>% group_by(NM_CANDIDATO, NR_TURNO, primeiro_digito) %>% 
+  summarize(Freq = n()) %>% ungroup() %>% filter(NR_TURNO == 2)
+
+dados = dados %>% 
+  mutate(NM_CANDIDATO = ifelse(NM_CANDIDATO == "JAIR MESSIAS BOLSONARO",
+                               "Bolsonaro", "Lula")) %>%
+  mutate(primeiro_digito = ifelse(is.nan(primeiro_digito),
+                                  NA, primeiro_digito)) %>%
+  na.omit() %>%
+  group_by(NM_CANDIDATO, NR_TURNO) %>%
+  mutate(perc = 100*Freq/sum(Freq)) %>% ungroup()
+
+dados %>% ggplot(aes(x = primeiro_digito |> as.factor(),
+                     y = perc, fill = NM_CANDIDATO))+
+  geom_bar(stat = "identity", position = "dodge")+
+  geom_text(aes(x = primeiro_digito - (NM_CANDIDATO == "Bolsonaro")/1.8 + 1/3,
+                y = perc + 0.6,
+                label = paste0(perc |> round(2), "%")))
+```
+
+```{r}
+teste = dados %>% group_by(NM_CANDIDATO) %>%
+  mutate(expected = sum(Freq)*log10((primeiro_digito+1)/primeiro_digito))
+
+freq_lula = (teste %>% filter(NM_CANDIDATO == "Lula"))$Freq
+expected_lula = (teste %>% filter(NM_CANDIDATO == "Lula"))$expected
+chi_lula = sum(((freq_lula - expected_lula)^2)/expected_lula)
+
+freq_bolso = (teste %>% filter(NM_CANDIDATO == "Bolsonaro"))$Freq
+expected_bolso = (teste %>% filter(NM_CANDIDATO == "Bolsonaro"))$expected
+chi_bolso = sum(((freq_bolso - expected_bolso)^2)/expected_bolso)
+```
+
+```{r}
+qchisq(0.95, 9)
+```
+
+```{r}
+expected_lula
+```
+
+```{r}
+dados2 = dados_totais %>% group_by(NM_MUNICIPIO) %>%
+  summarize(n = QT_VOTOS_NOMINAIS_VALIDOS |> sum()) %>% ungroup() %>% 
+  filter(n < 10^5)
+
+dados2 %>% ggplot(aes(x = n))+
+  geom_density()
+```
+
